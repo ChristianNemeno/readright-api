@@ -1,0 +1,36 @@
+# Reverse proxy + auto-HTTPS for the ReadRight API.
+# $API_DOMAIN and $ACME_EMAIL come from the container environment (see docker-compose.yml).
+# Caddy provisions and renews a Let's Encrypt certificate for $API_DOMAIN automatically.
+
+{$API_DOMAIN} {
+	email {$ACME_EMAIL}
+
+	encode gzip
+
+	# Reject oversized uploads at the edge (defense-in-depth; the API also enforces
+	# MAX_UPLOAD_MB). Keep this in sync with MAX_UPLOAD_MB in .env.
+	request_body {
+		max_size 40MB
+	}
+
+	reverse_proxy api:8000
+
+	log {
+		output stdout
+		format console
+	}
+
+	# Optional hardening — rate limiting. The public VITE_API_KEY means anyone can
+	# call /analyze, and each call is expensive. The app's MAX_CONCURRENCY gate
+	# already caps resource use (extra callers get 503), so a rate limiter is not
+	# required for the pilot. To add one, build a custom image with the
+	# caddy-ratelimit plugin (github.com/mholt/caddy-ratelimit via xcaddy) and add:
+	#
+	#   rate_limit {
+	#       zone analyze {
+	#           key    {remote_host}
+	#           events 10
+	#           window 1m
+	#       }
+	#   }
+}
