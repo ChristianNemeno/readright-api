@@ -20,6 +20,7 @@ class WhisperXTranscriber:
         self._model = whisperx.load_model(  # type: ignore[no-untyped-call]
             settings.WHISPERX_MODEL,
             device=settings.WHISPERX_DEVICE,
+            compute_type=settings.WHISPERX_COMPUTE_TYPE,
             language="en",
         )
         self._align_model, self._metadata = whisperx.load_align_model(  # type: ignore[no-untyped-call]

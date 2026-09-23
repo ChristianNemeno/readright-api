@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     API_KEY: str
     WHISPERX_MODEL: str = "large-v3"
     WHISPERX_DEVICE: str = "cpu"
+    WHISPERX_COMPUTE_TYPE: str = "int8"
+
+    MAX_CONCURRENCY: int = 1
+    MAX_UPLOAD_MB: int = 40
 
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""

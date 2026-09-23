@@ -1,3 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ReadRight API dependencies.
+#
+# REPRODUCIBILITY: for deployment, generate a full lockfile from a known-good,
+# CI-tested Python 3.12 venv and build from that instead of this loose list:
+#     pip install -r requirements.txt && pip freeze > requirements.lock.txt
+# Then point the Dockerfile at requirements.lock.txt. The pins below only fix the
+# few axes that are known to break WhisperX builds; everything else floats.
+#
+# CPU-ONLY TORCH: this service runs on CPU. Install the CPU wheels so the image
+# doesn't pull multi-GB CUDA libraries. Either build with:
+#     pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+# or uncomment the index line below.
+# --extra-index-url https://download.pytorch.org/whl/cpu
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Core API
 fastapi
 uvicorn[standard]
@@ -6,18 +22,18 @@ pydantic
 pydantic-settings
 python-dotenv
 
-# GO2 — ASR pipeline (heavy, install when ready)
-# NOTE: ffmpeg system binary required — install separately:
-#   Ubuntu/Debian: sudo apt-get install ffmpeg
-#   macOS:         brew install ffmpeg
-#   VM/Docker:     include in Dockerfile as RUN apt-get install -y ffmpeg
+# GO2 — ASR pipeline (heavy)
+# NOTE: ffmpeg system binary required (installed via the Dockerfile / apt).
 whisperx
+ctranslate2          # int8 inference backend for large-v3 (see WHISPERX_COMPUTE_TYPE)
+faster-whisper       # used to pre-download/quantize the model at image-build time
 librosa
 praat-parselmouth
 ffmpeg-python
+numpy<2              # WhisperX / numba / librosa are not yet numpy 2.x compatible — pin to avoid import errors
 
 # GO3 — CV / prosody pipeline
-mediapipe
+mediapipe            # pulls its own OpenCV (cv2); do not add a second opencv-* package (import conflict)
 
 # Storage
 supabase
