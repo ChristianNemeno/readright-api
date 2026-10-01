@@ -1,11 +1,12 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Header, HTTPException, UploadFile
 
 from app.config import get_settings
-from app.dependencies import get_analysis_orchestrator
+from app.dependencies import get_analysis_orchestrator, get_recording_storage
 from app.models.assessment import AssessmentResult
+from app.models.storage import RecordingStorageProtocol
 from app.services.analysis_orchestrator import AnalysisOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -32,12 +33,14 @@ class AnalyzeController:
     async def analyze(
         self,
         file: UploadFile,
+        background_tasks: BackgroundTasks,
         passage_id: str = Form(...),
         learner_id: str = Form(""),
         x_api_key: str = Header(..., alias="X-API-Key"),
         orchestrator: AnalysisOrchestrator = Depends(get_analysis_orchestrator),
+        recording_storage: RecordingStorageProtocol | None = Depends(get_recording_storage),
     ) -> AssessmentResult:
-        """Accept a video upload and run the full assessment pipeline."""
+        """Accept a video upload, run the pipeline, then upload the extracted audio after responding."""
         self._check_api_key(x_api_key)
         self._check_upload_size(file.size)
 
@@ -47,6 +50,12 @@ class AnalyzeController:
                 status_code=503,
                 detail={"error": "The service is busy. Please wait a moment and try again.", "code": "BUSY"},
             )
+
+        audio_bytes: bytes | None = None
+
+        def _capture_audio(wav_bytes: bytes) -> None:
+            nonlocal audio_bytes
+            audio_bytes = wav_bytes
 
         async with self._semaphore:
             upload_bytes = await file.read()
@@ -62,7 +71,14 @@ class AnalyzeController:
                 bool(learner_id.strip()),
             )
 
-            result = await orchestrator.run(upload_bytes, filename, passage_id, learner_id)
+            result = await orchestrator.run(
+                upload_bytes, filename, passage_id, learner_id, on_audio_extracted=_capture_audio
+            )
+
+        if audio_bytes is not None and recording_storage is not None:
+            background_tasks.add_task(
+                recording_storage.upload, audio_bytes, "audio.wav", learner_id, passage_id, "audio/wav"
+            )
 
         logger.info("/analyze outbound body=%s", result.model_dump())
         return result

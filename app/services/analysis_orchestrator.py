@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 
 from fastapi import HTTPException
 
@@ -38,16 +39,19 @@ class AnalysisOrchestrator:
         source_filename: str,
         passage_id: str,
         learner_id: str,
+        on_audio_extracted: Callable[[bytes], None] | None = None,
     ) -> AssessmentResult:
         """
         Full pipeline: write upload → extract → GO2+GO3 in parallel → consolidate → DB insert.
+        on_audio_extracted, if given, fires once with the extracted WAV bytes right after
+        extraction succeeds — lets the caller upload the audio without touching temp files.
         Returns AssessmentResult with db_save_failed=True if the session INSERT fails.
         Raises HTTPException(500) with code EXTRACTION_FAILED / ANALYSIS_FAILED / CONSOLIDATION_FAILED depending on which stage threw.
         """
         temp_dir = tempfile.mkdtemp()
         try:
             return await self._execute(
-                upload_bytes, source_filename, passage_id, learner_id, temp_dir
+                upload_bytes, source_filename, passage_id, learner_id, temp_dir, on_audio_extracted
             )
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -59,6 +63,7 @@ class AnalysisOrchestrator:
         passage_id: str,
         learner_id: str,
         temp_dir: str,
+        on_audio_extracted: Callable[[bytes], None] | None,
     ) -> AssessmentResult:
         """Inner pipeline logic — runs inside the temp_dir try/finally."""
         ext = os.path.splitext(source_filename)[-1] or ".webm"
@@ -77,6 +82,10 @@ class AnalysisOrchestrator:
                 status_code=500,
                 detail={"error": str(exc), "code": "EXTRACTION_FAILED"},
             ) from exc
+
+        if on_audio_extracted is not None:
+            with open(extraction["wav_path"], "rb") as f:
+                on_audio_extracted(f.read())
 
         # Run GO2 + GO3 in parallel (both are blocking — run in thread pool)
         try:

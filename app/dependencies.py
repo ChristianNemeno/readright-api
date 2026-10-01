@@ -6,9 +6,11 @@ from app.models.prosody_detector import ProsodyDetectorProtocol
 from app.models.proper_noun import ProperNounExtractorProtocol
 from app.models.scoring import ScoringEngineProtocol
 from app.models.session import SessionRepositoryProtocol
+from app.models.storage import RecordingStorageProtocol
 from app.models.transcription import TranscriberProtocol
 from app.services.analysis_orchestrator import AnalysisOrchestrator
 from app.services.db.passage_repository import PassageRepository
+from app.services.db.recording_storage import SupabaseRecordingStorage
 from app.services.db.session_repository import SessionRepository
 from app.services.db.supabase_client import get_supabase_client
 from app.services.go2.miscue_classifier import MiscueClassifier
@@ -57,6 +59,16 @@ def get_session_repository() -> SessionRepositoryProtocol:
     if client is None:
         raise RuntimeError("Supabase client not initialised — check SUPABASE_URL and SUPABASE_SERVICE_KEY")
     return SessionRepository(client)
+
+
+def get_recording_storage() -> RecordingStorageProtocol | None:
+    """FastAPI dependency — SupabaseRecordingStorage backed by the Supabase service client.
+    None if Supabase isn't configured — audio upload is a non-fatal, best-effort extra, unlike
+    the passage/session repositories which /analyze cannot function without."""
+    client = get_supabase_client()
+    if client is None:
+        return None
+    return SupabaseRecordingStorage(client)
 
 
 def get_media_extractor() -> MediaExtractorProtocol:
