@@ -87,6 +87,7 @@ class CVDetector:
         pointing_frames = 0
         gaze_shifts = 0
         no_face_frames = 0
+        face_ever_seen = False
         prev_xy: tuple[float, float] | None = None
         frame_index = 0
         try:
@@ -109,13 +110,17 @@ class CVDetector:
                     pointing_frames += 1
                 xy = self._iris_xy(image)
                 if xy is not None:
+                    face_ever_seen = True
                     if (
                         prev_xy is not None
                         and math.hypot(xy[0] - prev_xy[0], xy[1] - prev_xy[1]) > _GAZE_SHIFT_DELTA
                     ):
                         gaze_shifts += 1
                     prev_xy = xy
-                else:
+                elif face_ever_seen:
+                    # Only count a vanished face as losing place once a face was actually
+                    # established — a face that's never visible from frame 1 is a camera/
+                    # setup problem, not a reader who looked away mid-passage.
                     no_face_frames += 1
                 frame_index += 1
         finally:
