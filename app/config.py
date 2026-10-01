@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     )
 
     API_KEY: str
-    WHISPERX_MODEL: str = "large-v3"
+    WHISPERX_MODEL: str = "base.en"
     WHISPERX_DEVICE: str = "cpu"
-    WHISPERX_COMPUTE_TYPE: str = "int8"
+    WHISPERX_COMPUTE_TYPE: str = "int8"  # lightest CPU footprint; use float16 on cuda
 
     MAX_CONCURRENCY: int = 1
     MAX_UPLOAD_MB: int = 40

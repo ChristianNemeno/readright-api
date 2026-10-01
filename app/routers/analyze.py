@@ -17,7 +17,7 @@ class AnalyzeController:
     def __init__(self) -> None:
         """Register the /analyze route and build the concurrency gate from settings."""
         settings = get_settings()
-        # Serialize heavy pipeline runs so a small box never loads two large-v3
+        # Serialize heavy pipeline runs so a small box never loads two WhisperX
         # inferences at once (OOM guard). Pilot default is 1 — extra callers get 503.
         self._semaphore = asyncio.Semaphore(max(1, settings.MAX_CONCURRENCY))
         self._max_upload_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024

@@ -25,7 +25,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      start_period: 90s  # large-v3 int8 needs time to load into RAM at startup
+      start_period: 90s  # base.en int8 loads fast; generous margin for a cold/busy box
       retries: 3
 
   caddy:

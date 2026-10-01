@@ -13,11 +13,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Model choice is a build arg so the baked cache matches what runs at startup.
-# int8 (CTranslate2) keeps large-v3 accuracy while ~halving RAM and speeding CPU inference.
-ARG WHISPERX_MODEL=large-v3
+# base.en + int8 — smallest/fastest CPU-viable combo for a pilot box (see .env.example
+# for the full size ladder). Bump WHISPERX_MODEL up a rung if ASR noise becomes an issue.
+ARG WHISPERX_MODEL=base.en
 ARG WHISPERX_COMPUTE_TYPE=int8
 
-# Pre-download + int8-quantize the model into the default HuggingFace cache
+# Pre-download + quantize the model into the default HuggingFace cache
 # (~/.cache/huggingface). whisperx.load_model() finds it there at startup.
 RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPERX_MODEL}', device='cpu', compute_type='${WHISPERX_COMPUTE_TYPE}')"
 
