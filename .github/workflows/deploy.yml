@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m venv .venv
-          .venv/bin/pip install -r requirements.txt pyright
+          .venv/bin/pip install -r requirements.lock.txt pyright
 
       - name: Pyright
         run: .venv/bin/pyright app/

@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install from the lockfile, not requirements.txt — an unpinned resolve backtracks
+# through whisperx versions (see requirements.lock.txt's header for why that's unsafe).
+COPY requirements.lock.txt .
+RUN pip install --no-cache-dir -r requirements.lock.txt
 
 # Model choice is a build arg so the baked cache matches what runs at startup.
 # base.en + int8 — smallest/fastest CPU-viable combo for a pilot box (see .env.example
