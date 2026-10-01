@@ -1,4 +1,5 @@
 # tests/test_rr030.py
+from collections.abc import Iterator
 from pathlib import Path
 from typing import cast
 
@@ -14,11 +15,14 @@ _NORMAL_FIXTURE = Path("tests/fixtures/normal_reading.mp4")
 
 
 @pytest.fixture(scope="module")
-def detector() -> CVDetector:
-    """One loaded CVDetector reused across the module — load() is expensive."""
+def detector() -> Iterator[CVDetector]:
+    """One loaded CVDetector reused across the module — load() is expensive.
+    Must close() after use: the MediaPipe landmarkers' background threads otherwise
+    keep pytest's process alive indefinitely after all tests have already passed."""
     d = CVDetector()
     d.load()
-    return d
+    yield d
+    d.close()
 
 
 def _write_video(path: Path, frames: int, *, color: int = 0) -> None:
