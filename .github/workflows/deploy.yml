@@ -39,13 +39,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libgles2 libegl1
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pyright
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt pyright
 
       - name: Pyright
-        run: pyright app/
+        run: .venv/bin/pyright app/
 
       - name: Pytest
-        run: pytest
+        run: .venv/bin/pytest
         env:
           API_KEY: test-api-key
 
