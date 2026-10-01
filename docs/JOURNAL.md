@@ -438,3 +438,22 @@ A word-by-word reader pauses at almost every word boundary (~300–450 ms); thos
 - Pyright: `0 errors` (strict) — `app/services/go3/prosody_detector.py`, `tests/test_word_by_word_fixtures.py`
 - Tests: `58 passed` (full suite, 173.83 s) — 2 new word_by_word fixture tests included
 - Manual: `inspect_word_by_word.py` on both fixtures confirms fluent → 0.105/s → False, word-by-word → 0.298/s → True
+
+---
+
+### 2026-10-01 · Iteration 12 — Name uploaded recordings after their passage
+
+**Changed**
+- `app/services/db/recording_storage.py` — `SupabaseRecordingStorage` now takes a `PassageRepositoryProtocol` in its constructor and uses it to build the uploaded object's filename as `<first 10 alnum chars of passage, lowercased><uuid4 hex><ext>` (folder structure `{learner_id}/{passage_id}/...` unchanged). Passage fetch failure falls back to no prefix — upload still never raises.
+- `app/dependencies.py` — `get_recording_storage` passes `get_passage_repository()` into `SupabaseRecordingStorage`.
+
+**Added**
+- `tests/test_recording_storage.py` — 2 tests: filename is prefixed with the sanitized passage text; fetch failure falls back to a bare uuid filename.
+
+**Why**
+Requested so recordings in the Supabase bucket are recognizable by passage at a glance instead of being opaque UUIDs.
+
+**Verification**
+- Pyright: `0 errors` (strict) — `app/services/db/recording_storage.py`, `app/dependencies.py`, `tests/test_recording_storage.py`
+- Tests: `63 passed, 4 skipped` (full suite) — 2 new recording_storage tests included
+- SOLID: N/A for review beyond single-responsibility check — no new classes/Protocols; `SupabaseRecordingStorage` still depends on an injected `PassageRepositoryProtocol` abstraction, concrete wired only in `dependencies.py`
