@@ -73,8 +73,9 @@ tests/                          # pytest — test_rr020..rr032 cover each ticket
 `.env` (copy from `.env.example`):
 ```
 API_KEY=your-secret-key
-WHISPERX_MODEL=base              # use large-v3 on GPU VM
-WHISPERX_DEVICE=cpu              # use cuda on GPU VM
+WHISPERX_MODEL=base.en           # size ladder: tiny.en < base.en < small.en < medium.en
+WHISPERX_DEVICE=cpu
+WHISPERX_COMPUTE_TYPE=int8       # lightest CPU footprint (~half the RAM, 2-4x faster); float16 on cuda
 SUPABASE_URL=https://...supabase.co
 SUPABASE_SERVICE_KEY=...         # service key, not anon — orchestrator persists sessions
 ALLOWED_ORIGINS=["http://localhost:5173"]
