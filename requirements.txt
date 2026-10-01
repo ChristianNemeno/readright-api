@@ -7,12 +7,12 @@
 # Then point the Dockerfile at requirements.lock.txt. The pins below only fix the
 # few axes that are known to break WhisperX builds; everything else floats.
 #
-# CPU-ONLY TORCH: this service runs on CPU. Install the CPU wheels so the image
-# doesn't pull multi-GB CUDA libraries. Either build with:
-#     pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
-# or uncomment the index line below.
-# --extra-index-url https://download.pytorch.org/whl/cpu
+# CPU-ONLY TORCH: this service runs on CPU (WHISPERX_DEVICE=cpu, hardcoded). The
+# index below serves CPU wheels for torch/torchaudio/torchvision first, so the
+# image doesn't pull the ~4.6GB of unused nvidia-cu12-*/CUDA-torch packages that
+# whisperx/pyannote otherwise bring in. Comment it out only for a deliberate GPU build.
 # ─────────────────────────────────────────────────────────────────────────────
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core API
 fastapi
@@ -25,7 +25,7 @@ python-dotenv
 # GO2 — ASR pipeline (heavy)
 # NOTE: ffmpeg system binary required (installed via the Dockerfile / apt).
 whisperx
-ctranslate2          # int8 inference backend for large-v3 (see WHISPERX_COMPUTE_TYPE)
+ctranslate2          # int8 inference backend for the model (see WHISPERX_COMPUTE_TYPE)
 faster-whisper       # used to pre-download/quantize the model at image-build time
 librosa
 praat-parselmouth
