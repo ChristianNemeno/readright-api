@@ -10,7 +10,7 @@
 	# Reject oversized uploads at the edge (defense-in-depth; the API also enforces
 	# MAX_UPLOAD_MB). Keep this in sync with MAX_UPLOAD_MB in .env.
 	request_body {
-		max_size 40MB
+		max_size 150MB
 	}
 
 	reverse_proxy api:8000

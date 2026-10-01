@@ -38,6 +38,14 @@ uvicorn app.main:app --reload
 .venv/bin/pyright app/   # strict — must be 0 errors before committing
 ```
 
+## Deployment
+
+Docker + Caddy (auto-HTTPS) via `docker-compose.yml` — see the comments in that file and in `Caddyfile` for host setup, and `.github/workflows/deploy.yml` for the CI pipeline (test → build/push to GHCR → SSH deploy) and its required repo secrets.
+
+Before first deploy, create these in the Supabase project (not done by code):
+- A `sessions` table matching `SessionRecord` (`app/models/session.py`) — insert failure is non-fatal, so a missing table won't break `/analyze`, but session history silently won't persist.
+- A **private** `recordings` storage bucket — same non-fatal treatment; a missing bucket just means the extracted audio silently never gets uploaded.
+
 ## API
 
 ### `POST /analyze`
