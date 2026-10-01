@@ -24,13 +24,19 @@ python-dotenv
 
 # GO2 — ASR pipeline (heavy)
 # NOTE: ffmpeg system binary required (installed via the Dockerfile / apt).
-whisperx
-ctranslate2          # int8 inference backend for the model (see WHISPERX_COMPUTE_TYPE)
+# whisperx and ctranslate2 are pinned, not just floated: an unpinned resolve backtracks
+# pip all the way down to whisperx==3.3.1, which drags in ctranslate2==4.4.0 — a build
+# whose shared library fails to even import ("cannot enable executable stack as shared
+# object requires"). Confirmed broken; do not loosen these two without re-verifying
+# `import whisperx` actually works on a clean install first.
+whisperx==3.8.6
+ctranslate2==4.8.1   # int8 inference backend for the model (see WHISPERX_COMPUTE_TYPE)
 faster-whisper       # used to pre-download/quantize the model at image-build time
 librosa
 praat-parselmouth
 ffmpeg-python
-numpy<2              # WhisperX / numba / librosa are not yet numpy 2.x compatible — pin to avoid import errors
+numpy>=2.1.0         # whisperx==3.8.6 requires numpy>=2.1.0 — do not pin <2, it forces pip to
+                     # backtrack to whisperx<3.4, which drags in a broken ctranslate2 build
 
 # GO3 — CV / prosody pipeline
 mediapipe            # pulls its own OpenCV (cv2); do not add a second opencv-* package (import conflict)
