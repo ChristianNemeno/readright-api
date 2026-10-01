@@ -3,7 +3,7 @@
 # Caddy provisions and renews a Let's Encrypt certificate for $API_DOMAIN automatically.
 
 {$API_DOMAIN} {
-	email {$ACME_EMAIL}
+	tls {$ACME_EMAIL}
 
 	encode gzip
 
