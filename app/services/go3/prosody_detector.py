@@ -1,9 +1,10 @@
 # app/services/go3/prosody_detector.py
 import logging
-from typing import Any
+from typing import Any, cast
 
 import librosa  # type: ignore[import-untyped]
 import numpy as np
+import numpy.typing as npt
 import parselmouth  # type: ignore[import-untyped]
 
 from app.models.prosody_detector import ProsodyFlags
@@ -32,9 +33,13 @@ class ProsodyAmplitudeDetector:
 
     def detect(self, wav_path: str) -> ProsodyFlags:
         """Loads WAV once and runs all three prosody checks. Returns all-False for audio < 5s."""
-        y: np.ndarray
-        sr: int | float
-        y, sr = librosa.load(wav_path, sr=_SAMPLE_RATE)  # type: ignore[no-untyped-call]
+        # librosa is untyped (import-level type: ignore above), so its return is Any —
+        # cast to what librosa.load actually returns rather than let Any/Unknown leak
+        # into every downstream use of y/sr.
+        y, sr = cast(
+            tuple[npt.NDArray[np.float64], int | float],
+            librosa.load(wav_path, sr=_SAMPLE_RATE),  # type: ignore[no-untyped-call]
+        )
         if len(y) / sr < _MIN_DURATION_SECONDS:
             return _default_flags()
         return {
@@ -43,23 +48,28 @@ class ProsodyAmplitudeDetector:
             "word_by_word_reading": self._detect_word_by_word(y, sr),
         }
 
-    def _detect_inaudible(self, y: np.ndarray) -> bool:
+    def _detect_inaudible(self, y: npt.NDArray[np.float64]) -> bool:
         """True if mean RMS energy falls below threshold — indicates voice too soft to score."""
-        rms: np.ndarray = librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0]  # type: ignore[no-untyped-call]
+        # librosa.feature.rms is typed but returns a bare (unsubscripted) np.ndarray —
+        # cast rather than let that third-party imprecision leak into our own types.
+        rms = cast(
+            npt.NDArray[np.float64],
+            librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0],  # type: ignore[no-untyped-call]
+        )
         return float(np.mean(rms)) < _INAUDIBLE_RMS_THRESHOLD
 
     def _detect_monotone(self, wav_path: str) -> bool:
         """True if semitone-std of voiced F0 is below threshold — indicates flat/unexpressive reading."""
         snd: Any = parselmouth.Sound(wav_path)  # type: ignore[no-untyped-call]
         pitch: Any = snd.to_pitch()  # type: ignore[no-untyped-call]
-        f0_values: np.ndarray = np.array(pitch.selected_array["frequency"])  # type: ignore[no-untyped-call]
-        voiced: np.ndarray = f0_values[f0_values > 0]
+        f0_values: npt.NDArray[np.float64] = np.array(pitch.selected_array["frequency"])  # type: ignore[no-untyped-call]
+        voiced: npt.NDArray[np.float64] = f0_values[f0_values > 0]
         if len(voiced) < _MIN_VOICED_FRAMES:
             return False
         # Speaker-normalize: express F0 variation in semitones around the speaker's median.
         # Median (vs mean) shrugs off occasional Praat octave-jump errors.
         median_f0: float = float(np.median(voiced))
-        semitones: np.ndarray = 12.0 * np.log2(voiced / median_f0)
+        semitones: npt.NDArray[np.float64] = 12.0 * np.log2(voiced / median_f0)
         st_std: float = float(np.std(semitones))
         decision: bool = st_std < _MONOTONE_F0_STD_THRESHOLD_ST
         _LOG.info(
@@ -68,18 +78,21 @@ class ProsodyAmplitudeDetector:
         )
         return decision
 
-    def _detect_word_by_word(self, y: np.ndarray, sr: int | float) -> bool:
+    def _detect_word_by_word(self, y: npt.NDArray[np.float64], sr: int | float) -> bool:
         """True if mean inter-word silence gap exceeds threshold — indicates halting, word-by-word pacing."""
         hop_length: int = 512
-        rms: np.ndarray = librosa.feature.rms(  # type: ignore[no-untyped-call]
-            y=y, frame_length=2048, hop_length=hop_length
-        )[0]
+        rms = cast(
+            npt.NDArray[np.float64],
+            librosa.feature.rms(  # type: ignore[no-untyped-call]
+                y=y, frame_length=2048, hop_length=hop_length
+            )[0],
+        )
         n_frames: int = len(rms)
-        silent_mask: np.ndarray = rms < _SILENCE_RMS_THRESHOLD
+        silent_mask: npt.NDArray[np.bool_] = rms < _SILENCE_RMS_THRESHOLD
 
-        transitions: np.ndarray = np.diff(silent_mask.astype(np.int8))
-        gap_starts: np.ndarray = np.where(transitions == 1)[0] + 1
-        gap_ends: np.ndarray = np.where(transitions == -1)[0] + 1
+        transitions: npt.NDArray[np.int8] = np.diff(silent_mask.astype(np.int8))
+        gap_starts: npt.NDArray[np.intp] = np.where(transitions == 1)[0] + 1
+        gap_ends: npt.NDArray[np.intp] = np.where(transitions == -1)[0] + 1
 
         if silent_mask[0]:
             gap_starts = np.concatenate([[0], gap_starts])
@@ -91,9 +104,9 @@ class ProsodyAmplitudeDetector:
         gap_ends = gap_ends[:n_gaps]
 
         # Keep only interior gaps — exclude leading/trailing recording silence
-        interior: np.ndarray = (gap_starts > 0) & (gap_ends < n_frames)
-        gap_lengths: np.ndarray = (gap_ends - gap_starts)[interior]
-        real_gaps: np.ndarray = gap_lengths[gap_lengths >= _SILENCE_MIN_FRAMES]
+        interior: npt.NDArray[np.bool_] = (gap_starts > 0) & (gap_ends < n_frames)
+        gap_lengths: npt.NDArray[np.intp] = (gap_ends - gap_starts)[interior]
+        real_gaps: npt.NDArray[np.intp] = gap_lengths[gap_lengths >= _SILENCE_MIN_FRAMES]
 
         if len(real_gaps) < _MIN_GAP_EVENTS:
             _LOG.info(
@@ -103,7 +116,7 @@ class ProsodyAmplitudeDetector:
             return False
 
         frame_duration: float = hop_length / float(sr)
-        gap_durations: np.ndarray = real_gaps * frame_duration
+        gap_durations: npt.NDArray[np.floating[Any]] = real_gaps * frame_duration
         total_duration: float = n_frames * frame_duration
         medium_count: int = int(np.sum(gap_durations <= _MEDIUM_GAP_MAX))
         medium_rate: float = medium_count / total_duration if total_duration > 0 else 0.0
