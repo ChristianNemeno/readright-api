@@ -1,3 +1,8 @@
+# CPU-only torch build — whisperx/pyannote pull in CUDA wheels (~4GB of unused nvidia-cu12-*
+# packages) by default even though WHISPERX_DEVICE=cpu is hardcoded. This index serves CPU
+# builds first for torch/torchaudio/torchvision.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Core API
 fastapi
 uvicorn[standard]
