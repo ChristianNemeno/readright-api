@@ -68,7 +68,7 @@ def get_recording_storage() -> RecordingStorageProtocol | None:
     client = get_supabase_client()
     if client is None:
         return None
-    return SupabaseRecordingStorage(client)
+    return SupabaseRecordingStorage(client, get_passage_repository())
 
 
 def get_media_extractor() -> MediaExtractorProtocol:
