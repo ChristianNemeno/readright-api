@@ -54,6 +54,16 @@ class CVDetector:
         self._hands: Any = None
         self._face_mesh: Any = None
 
+    def close(self) -> None:
+        """Releases the HandLandmarker/FaceLandmarker native resources and their background
+        threads. The production singleton (load_models()) never calls this — the API process
+        is killed, not cleanly shut down — but tests that construct their own CVDetector must,
+        or the landmarkers' threads keep pytest's process alive indefinitely after all tests pass."""
+        if self._hands is not None:
+            self._hands.close()
+        if self._face_mesh is not None:
+            self._face_mesh.close()
+
     def load(self) -> None:
         """Downloads (if needed) and loads MediaPipe HandLandmarker + FaceLandmarker once at startup."""
         _ensure_model(_HAND_MODEL_PATH, _HAND_MODEL_URL)
